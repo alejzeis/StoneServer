@@ -39,13 +39,36 @@ public class ClientManager extends Thread {
 			in = new MCDataInputStream(this.sock.getInputStream());
 			while(running){
 				byte packetLength = (byte) in.readVarInt();
+				System.out.println("Length: "+packetLength);
 				byte PID = (byte) in.readVarInt(); //Get the packet ID
 				//server.getLogger().info("Recived packet ID: "+PID);
 				switch(PID){
 				
 				case 0x00:
 					//A Handshake packet
-					handleHandshake();
+					try{
+						//HandshakePacket hp = new HandshakePacket();
+						//hp.fromInput(in);
+						int protocol = in.readVarInt();
+						String addr = in.readString();
+						int port = in.readUnsignedShort();
+						int nextState = in.readVarInt();
+						
+						if(nextState == 1){ //Status Ping
+							in.readVarInt();
+							in.readVarInt(); //Status Ping Request
+							//ListPingResponse response = new ListPingResponse(getListJson().toJSONString());
+							//response.toOutput(out);
+							String json = getListJson().toJSONString();
+							out.writeVarInt(1+json.length());
+							out.writeVarInt(0x00);
+							out.writeString(json);
+						}
+						
+					} catch (Exception e) {
+						server.getLogger().error("Exception while handling a HandshakePacket: ");
+						e.printStackTrace();
+					}
 					
 					break;
 					
@@ -66,6 +89,8 @@ public class ClientManager extends Thread {
 					break;
 				}
 			}
+		} catch(EOFException e){
+			server.getLogger().warning("End of Stream.");
 		} catch(IOException e){
 			//TODO: Auto gen catch block
 			e.printStackTrace();
@@ -74,13 +99,22 @@ public class ClientManager extends Thread {
 	
 	private void handleHandshake(){
 		try{
-			HandshakePacket hp = new HandshakePacket();
-			hp.fromInput(in);
+			//HandshakePacket hp = new HandshakePacket();
+			//hp.fromInput(in);
+			int protocol = in.readVarInt();
+			String addr = in.readString();
+			int port = in.readUnsignedShort();
+			int nextState = in.readVarInt();
 			
-			if(hp.nextState == 1){ //Status Ping
-				in.readByte(); //Status Ping Request
-				ListPingResponse response = new ListPingResponse(getListJson().toJSONString());
-				response.toOutput(out);
+			if(nextState == 1){ //Status Ping
+				in.readVarInt();
+				in.readVarInt(); //Status Ping Request
+				//ListPingResponse response = new ListPingResponse(getListJson().toJSONString());
+				//response.toOutput(out);
+				String json = getListJson().toJSONString();
+				out.writeVarInt(1+json.length());
+				out.writeVarInt(0x00);
+				out.writeString(json);
 			}
 			
 		} catch (Exception e) {
